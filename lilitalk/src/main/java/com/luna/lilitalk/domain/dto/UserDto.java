@@ -3,6 +3,7 @@ package com.luna.lilitalk.domain.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
+import org.jspecify.annotations.Nullable;
 
 public class UserDto {
 
@@ -10,10 +11,10 @@ public class UserDto {
         Long id,
         String username,
         String displayName,
-        String profileImageUrl,
-        String status,
+        @Nullable String profileImageUrl,
+        @Nullable String status,
         Boolean isActive,
-        LocalDateTime lastSeenAt,
+        @Nullable LocalDateTime lastSeenAt,
         LocalDateTime createdAt
     ) {
 

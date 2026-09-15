@@ -58,6 +58,28 @@ public class ChatDto {
         Long sequenceNumber
     ) {
 
+        public MessageDto(
+            Long id,
+            Long chatRoomId,
+            UserDto sender,
+            MessageType type,
+            @Nullable String content,
+            Boolean isEdited,
+            Boolean isDeleted,
+            LocalDateTime createdAt,
+            @Nullable LocalDateTime editedAt
+        ) {
+            this(id,
+                chatRoomId,
+                sender,
+                type,
+                content,
+                isEdited,
+                isDeleted,
+                createdAt,
+                editedAt,
+                0L);
+        }
     }
 
     public record SendMessageRequest(
@@ -74,17 +96,20 @@ public class ChatDto {
 
     public record MessagePageRequest(
         Long chatRoomId,
-        Long cursor, // 마지막 메시지 ID (없으면 최신부터)
+        @Nullable Long cursor, // 마지막 메시지 ID (없으면 최신부터)
         Integer limit,
         MessageDirection direction
     ) {
 
+        public MessagePageRequest(Long chatRoomId) {
+            this(chatRoomId, null, 50, MessageDirection.BEFORE);
+        }
     }
 
     public record MessagePageResponse(
         List<MessageDto> messages,
-        Long nextCursor, // 다음 페이지를 위한 커서
-        Long prevCursor, // 이전 페이지를 위한 커서
+        @Nullable Long nextCursor, // 다음 페이지를 위한 커서
+        @Nullable Long prevCursor, // 이전 페이지를 위한 커서
         Boolean hasNext,
         Boolean hasPrev
     ) {
@@ -101,7 +126,7 @@ public class ChatDto {
         UserDto user,
         MemberRole role,
         Boolean isActive,
-        Long lastReadMessageId,
+        @Nullable Long lastReadMessageId,
         LocalDateTime joinedAt,
         @Nullable LocalDateTime leftAt
     ) {
