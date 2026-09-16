@@ -118,7 +118,7 @@ public class RedisMessageBroker implements MessageListener {
         }
     }
 
-    void subscribeToRoom(Long roomId) {
+    public void subscribeToRoom(Long roomId) {
         if (subscribeRooms.add(roomId)) {
             ChannelTopic topic = new ChannelTopic("chat.room.%d".formatted(roomId));
             messageListenerContainer.addMessageListener(this, topic);
@@ -128,7 +128,7 @@ public class RedisMessageBroker implements MessageListener {
         }
     }
 
-    void unsubscribeFromRoom(Long roomId) {
+    public void unsubscribeFromRoom(Long roomId) {
         if (subscribeRooms.remove(roomId)) {
             ChannelTopic topic = new ChannelTopic("chat.room.%d".formatted(roomId));
             messageListenerContainer.removeMessageListener(this, topic);
