@@ -102,7 +102,7 @@ public class User {
         return status;
     }
 
-    public Boolean getActive() {
+    public Boolean getIsActive() {
         return isActive;
     }
 

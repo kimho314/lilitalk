@@ -97,6 +97,22 @@ public class ChatRoom {
         this.updatedAt = updatedAt;
     }
 
+    public ChatRoom(
+        String name,
+        @Nullable String description,
+        ChatRoomType type,
+        String imageUrl,
+        Integer maxMembers,
+        User createdBy
+    ) {
+        this.name = name;
+        this.description = description;
+        this.type = type;
+        this.imageUrl = imageUrl;
+        this.maxMembers = maxMembers;
+        this.createdBy = createdBy;
+    }
+
     public Long getId() {
         return id;
     }

@@ -92,6 +92,16 @@ public class ChatRoomMember {
         this.createdAt = createdAt;
     }
 
+    public ChatRoomMember(
+        ChatRoom savedRoom,
+        User creator,
+        MemberRole memberRole
+    ) {
+        this.chatRoom = savedRoom;
+        this.user = creator;
+        this.role = memberRole;
+    }
+
     public Long getId() {
         return id;
     }
@@ -108,7 +118,7 @@ public class ChatRoomMember {
         return role;
     }
 
-    public Boolean getActive() {
+    public Boolean getIsActive() {
         return isActive;
     }
 

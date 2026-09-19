@@ -7,6 +7,7 @@ import org.jspecify.annotations.Nullable;
 
 public class UserDto {
 
+
     public record UserDataDto(
         Long id,
         String username,

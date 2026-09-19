@@ -2,10 +2,10 @@ package com.luna.lilitalk.domain.dto;
 
 import com.luna.lilitalk.domain.model.ChatRoomType;
 import com.luna.lilitalk.domain.model.MemberRole;
+import com.luna.lilitalk.domain.model.MessageType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import java.awt.TrayIcon.MessageType;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -21,7 +21,7 @@ public class ChatDto {
         Boolean isActive,
         Integer maxMembers,
         Integer memberCount,
-        UserDto createdBy,
+        UserDto.UserDataDto createdBy,
         LocalDateTime createdAt,
         @Nullable MessageDto lastMessage
     ) {
@@ -48,7 +48,7 @@ public class ChatDto {
     public record MessageDto(
         Long id,
         Long chatRoomId,
-        UserDto sender,
+        UserDto.UserDataDto sender,
         MessageType type,
         @Nullable String content,
         Boolean isEdited,
@@ -61,7 +61,7 @@ public class ChatDto {
         public MessageDto(
             Long id,
             Long chatRoomId,
-            UserDto sender,
+            UserDto.UserDataDto sender,
             MessageType type,
             @Nullable String content,
             Boolean isEdited,
@@ -116,14 +116,14 @@ public class ChatDto {
 
     }
 
-    enum MessageDirection {
+    public enum MessageDirection {
         BEFORE, // 커서 이전 메시지들 (과거)
         AFTER   // 커서 이후 메시지들 (최신)
     }
 
     public record ChatRoomMemberDto(
         Long id,
-        UserDto user,
+        UserDto.UserDataDto user,
         MemberRole role,
         Boolean isActive,
         @Nullable Long lastReadMessageId,
