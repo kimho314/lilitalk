@@ -9,10 +9,12 @@ import com.luna.lilitalk.domain.dto.ChatDto.MessagePageRequest;
 import com.luna.lilitalk.domain.dto.ChatDto.MessagePageResponse;
 import com.luna.lilitalk.domain.dto.ChatDto.SendMessageRequest;
 import com.luna.lilitalk.domain.dto.UserDto;
+import com.luna.lilitalk.domain.dto.WebSocketDto.ChatMessage;
 import com.luna.lilitalk.domain.model.ChatRoom;
 import com.luna.lilitalk.domain.model.ChatRoomMember;
 import com.luna.lilitalk.domain.model.MemberRole;
 import com.luna.lilitalk.domain.model.Message;
+import com.luna.lilitalk.domain.model.MessageType;
 import com.luna.lilitalk.domain.model.User;
 import com.luna.lilitalk.domain.service.ChatService;
 import com.luna.lilitalk.persistence.redis.RedisMessageBroker;
@@ -253,7 +255,56 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public MessageDto sendMessage(SendMessageRequest request, Long senderId) {
-        return null;
+        var chatRoom = chatRoomRepository.findById(request.chatRoomId())
+            .orElseThrow(() -> new IllegalArgumentException(
+                "채팅방을 찾을 수 없습니다: %d".formatted(request.chatRoomId())));
+
+        var sender = userRepository.findById(senderId)
+            .orElseThrow(
+                () -> new IllegalArgumentException("사용자를 찾을 수 없습니다: %d".formatted(senderId))
+            );
+
+        chatRoomMemberRepository.findByChatRoomIdAndUserIdAndIsActiveTrue(request.chatRoomId(),
+                senderId)
+            .orElseThrow(() -> new IllegalArgumentException("채팅방에 참여하지 않은 사용자입니다."));
+
+        var sequenceNumber = messageSequenceService.getNextSequence(request.chatRoomId());
+
+        var message = new Message(
+            request.content(),
+            request.type() == null ? null : MessageType.TEXT,
+            chatRoom,
+            sender,
+            sequenceNumber
+        );
+        var savedMessage = messageRepository.save(message);
+
+        var chatMessage = new ChatMessage(
+            savedMessage.getId(),
+            savedMessage.getContent() == null ? "" : savedMessage.getContent(),
+            savedMessage.getType(),
+            savedMessage.getSender().getId(),
+            savedMessage.getSender().getDisplayName(),
+            savedMessage.getSequenceNumber(),
+            savedMessage.getChatRoom().getId(),
+            savedMessage.getCreatedAt()
+        );
+
+        // 1. 로컬 세션에 즉시 전송 (실시간 응답성 보장)
+        webSocketSessionManager.sendMessageToLocalRoom(request.chatRoomId(), chatMessage);
+
+        // 2. 다른 서버 인스턴스에 브로드캐스트 (자신을 제외)
+        try {
+            redisMessageBroker.broadcastToRoom(
+                request.chatRoomId(),
+                chatMessage,
+                redisMessageBroker.getServerId()
+            );
+        } catch (Exception e) {
+            log.error("Failed to broadcast message via Redis: %s".formatted(e.getMessage()), e);
+        }
+
+        return messageToDto(savedMessage);
     }
 
     @Transactional(readOnly = true)

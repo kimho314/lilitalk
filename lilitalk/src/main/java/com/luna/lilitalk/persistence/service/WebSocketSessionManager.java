@@ -106,8 +106,18 @@ public class WebSocketSessionManager {
         log.info("Joined $roomId for $userId $serverId to server $serverRoomKey");
     }
 
-    public void sendMessageToLocalRoom(Long roomId, ChatMessage message,
-        @Nullable Long excludeUserId) {
+    public void sendMessageToLocalRoom(
+        Long roomId,
+        ChatMessage message
+    ) {
+        sendMessageToLocalRoom(roomId, message, null);
+    }
+
+    public void sendMessageToLocalRoom(
+        Long roomId,
+        ChatMessage message,
+        @Nullable Long excludeUserId
+    ) {
         String json = objectMapper.writeValueAsString(message);
 
         // 채팅방을 확인을 하면서, 관련된 방에 메시지를 전송

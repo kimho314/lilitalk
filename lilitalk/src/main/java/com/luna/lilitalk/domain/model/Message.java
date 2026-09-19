@@ -97,6 +97,20 @@ public class Message {
         this.editedAt = editedAt;
     }
 
+    public Message(
+        @Nullable String content,
+        MessageType messageType,
+        ChatRoom chatRoom,
+        User sender,
+        Long sequenceNumber
+    ) {
+        this.content = content;
+        this.type = messageType;
+        this.chatRoom = chatRoom;
+        this.sender = sender;
+        this.sequenceNumber = sequenceNumber;
+    }
+
     public Long getId() {
         return id;
     }

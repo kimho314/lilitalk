@@ -138,7 +138,7 @@ public class RedisMessageBroker implements MessageListener {
         }
     }
 
-    void broadcastToRoom(Long roomId, ChatMessage message, @Nullable String excludeSeverId) {
+    public void broadcastToRoom(Long roomId, ChatMessage message, @Nullable String excludeSeverId) {
         try {
             DistributedMessage dMessage = new DistributedMessage(
                 "%S-%d-%d".formatted(serverId, System.currentTimeMillis(), System.nanoTime()),
