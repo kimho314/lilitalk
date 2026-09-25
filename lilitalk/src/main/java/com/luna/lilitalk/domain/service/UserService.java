@@ -9,14 +9,14 @@ import org.springframework.data.domain.Pageable;
 public interface UserService {
 
     // 사용자 관리
-    UserDto createUser(CreateUserRequest request);
+    UserDto.UserDataDto createUser(CreateUserRequest request);
 
-    UserDto login(LoginRequest request);
+    UserDto.UserDataDto login(LoginRequest request);
 
-    UserDto getUserById(Long userId);
+    UserDto.UserDataDto getUserById(Long userId);
 
-    Page<UserDto> searchUsers(String query, Pageable pageable);
+    Page<UserDto.UserDataDto> searchUsers(String query, Pageable pageable);
 
     // 사용자 상태
-    UserDto updateLastSeen(Long userId);
+    UserDto.UserDataDto updateLastSeen(Long userId);
 }

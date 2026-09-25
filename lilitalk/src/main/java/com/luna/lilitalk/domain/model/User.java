@@ -19,6 +19,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @Table(name = "app_users")
 @EntityListeners(AuditingEntityListener.class)
 public class User {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -34,10 +35,12 @@ public class User {
     private String displayName;
 
     @Column(length = 500)
-    @Nullable private String profileImageUrl;
+    @Nullable
+    private String profileImageUrl;
 
     @Column(length = 50)
-    @Nullable private String status;
+    @Nullable
+    private String status;
 
     @Column(nullable = false)
     private Boolean isActive = true;
@@ -56,7 +59,18 @@ public class User {
     public User() {
     }
 
-    public User(Long id,
+    public User(
+        String username,
+        String hashPassword,
+        String displayName
+    ) {
+        this.username = username;
+        this.password = hashPassword;
+        this.displayName = displayName;
+    }
+
+    public User(
+        Long id,
         String username,
         String password,
         String displayName,
@@ -65,7 +79,8 @@ public class User {
         Boolean isActive,
         LocalDateTime lastSeenAt,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt) {
+        LocalDateTime updatedAt
+    ) {
         this.id = id;
         this.username = username;
         this.password = password;
@@ -77,6 +92,7 @@ public class User {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
+
 
     public Long getId() {
         return id;
