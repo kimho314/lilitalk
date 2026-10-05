@@ -1,19 +1,19 @@
 services:
   # PostgreSQL 데이터베이스 (공유)
   postgres:
-    image: postgres:18-alpine
+    image: postgres:18
     container_name: chat-postgres
     environment:
       POSTGRES_DB: chatdb
       POSTGRES_USER: chatuser
       POSTGRES_PASSWORD: chatpass
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U chatuser -d chatdb"]
+      test: [ "CMD-SHELL", "pg_isready -U chatuser -d chatdb" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -22,7 +22,7 @@ services:
 
   # Redis 메시지 브로커 (공유)
   redis:
-    image: redis:8-alpine
+    image: redis:8
     container_name: chat-redis
     command: redis-server --appendonly yes
     volumes:

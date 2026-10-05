@@ -13,7 +13,7 @@ FROM amazoncorretto:25-alpine-jdk
 WORKDIR /app
 
 # 애플리케이션 JAR 복사
-COPY --from=build /app/chat-application/build/libs/*.jar app.jar
+COPY --from=build /app/lilitalk/build/libs/*.jar app.jar
 
 # 포트 노출
 EXPOSE 8080
