@@ -12,21 +12,49 @@ import {
   LogOut
 } from 'lucide-react';
 
+// localStorage 키 상수
+const STORAGE_KEYS = {
+  USER: 'chat_current_user',
+  SELECTED_ROOM: 'chat_selected_room'
+};
+
 function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [selectedChatRoom, setSelectedChatRoom] = useState<ChatRoom | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
-  const [lastErrorTime, setLastErrorTime] = useState<number>(0);
   const [healthCheckInterval, setHealthCheckInterval] = useState<number>(30000);
-  const [consecutiveErrors, setConsecutiveErrors] = useState<number>(0);
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
 
-  // localStorage 키 상수
-  const STORAGE_KEYS = {
-    USER: 'chat_current_user',
-    SELECTED_ROOM: 'chat_selected_room'
-  };
+  // 알림 제거
+  const removeNotification = useCallback((id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  }, []);
+
+  // 알림 추가 (중복 방지)
+  const addNotification = useCallback((notification: Notification) => {
+    setNotifications(prev => {
+      // 같은 타입과 제목의 알림이 이미 있는지 확인
+      const isDuplicate = prev.some(n => 
+        n.type === notification.type && 
+        n.title === notification.title &&
+        Date.now() - n.timestamp < 30000 // 30초 이내의 중복만 체크
+      );
+      
+      if (isDuplicate) {
+        return prev; // 중복이면 추가하지 않음
+      }
+      
+      // 최대 3개만 유지 (에러 알림 스팸 방지)
+      return [notification, ...prev.slice(0, 2)];
+    });
+    
+    // 자동 제거 시간 설정
+    const autoRemoveTime = notification.type === 'error' ? 10000 : 3000; // 에러는 10초, 나머지는 3초
+    setTimeout(() => {
+      removeNotification(notification.id);
+    }, autoRemoveTime);
+  }, [removeNotification]);
 
   // localStorage에서 사용자 정보 불러오기
   const loadUserFromStorage = useCallback(() => {
@@ -90,66 +118,22 @@ function App() {
     try {
       await healthApi.check();
       setServerStatus('online');
-      setConsecutiveErrors(0);
       setHealthCheckInterval(30000); // 성공 시 원래 간격으로 복원
     } catch (error) {
       setServerStatus('offline');
-      setConsecutiveErrors(prev => {
-        const newErrorCount = prev + 1;
-        // 연속 에러 시 헬스체크 간격을 점진적으로 늘림 (최대 5분)
-        const newInterval = Math.min(30000 * Math.pow(1.5, newErrorCount), 300000);
-        setHealthCheckInterval(newInterval);
-        return newErrorCount;
-      });
+      setHealthCheckInterval(prev => Math.min(prev * 1.5, 300000));
       
-      // 마지막 에러로부터 30초 이상 지났을 때만 새 알림 표시
-      setLastErrorTime(prev => {
-        const now = Date.now();
-        if (now - prev > 30000) {
-          addNotification({
-            id: now.toString(),
-            type: 'error',
-            title: '서버 연결 오류',
-            message: '서버에 연결할 수 없습니다. 잠시 후 자동으로 재시도됩니다.',
-            timestamp: now,
-            read: false,
-          });
-          return now;
-        }
-        return prev;
+      const now = Date.now();
+      addNotification({
+        id: now.toString(),
+        type: 'error',
+        title: '서버 연결 오류',
+        message: '서버에 연결할 수 없습니다. 잠시 후 자동으로 재시도됩니다.',
+        timestamp: now,
+        read: false,
       });
     }
-  }, []); // 의존성 제거하고 내부에서 setState 함수 사용
-
-  // 알림 추가 (중복 방지)
-  const addNotification = (notification: Notification) => {
-    setNotifications(prev => {
-      // 같은 타입과 제목의 알림이 이미 있는지 확인
-      const isDuplicate = prev.some(n => 
-        n.type === notification.type && 
-        n.title === notification.title &&
-        Date.now() - n.timestamp < 30000 // 30초 이내의 중복만 체크
-      );
-      
-      if (isDuplicate) {
-        return prev; // 중복이면 추가하지 않음
-      }
-      
-      // 최대 3개만 유지 (에러 알림 스팸 방지)
-      return [notification, ...prev.slice(0, 2)];
-    });
-    
-    // 자동 제거 시간 설정
-    const autoRemoveTime = notification.type === 'error' ? 10000 : 3000; // 에러는 10초, 나머지는 3초
-    setTimeout(() => {
-      removeNotification(notification.id);
-    }, autoRemoveTime);
-  };
-
-  // 알림 제거
-  const removeNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  };
+  }, [addNotification]);
 
   // 에러 처리 (중복 방지)
   const handleError = useCallback((errorMessage: string) => {
@@ -161,7 +145,7 @@ function App() {
       timestamp: Date.now(),
       read: false,
     });
-  }, []);
+  }, [addNotification]);
 
   // 성공 메시지
   const handleSuccess = useCallback((message: string) => {
@@ -173,7 +157,7 @@ function App() {
       timestamp: Date.now(),
       read: false,
     });
-  }, []);
+  }, [addNotification]);
 
   // 로그인 처리
   const handleLogin = useCallback((user: User) => {
@@ -202,7 +186,7 @@ function App() {
     // 동적 간격으로 서버 상태 확인
     const interval = setInterval(checkServerHealth, healthCheckInterval);
     return () => clearInterval(interval);
-  }, [healthCheckInterval]); // checkServerHealth 의존성 제거
+  }, [checkServerHealth, healthCheckInterval]);
 
   // 스타일 정의
   const appStyle: React.CSSProperties = {
@@ -259,24 +243,6 @@ function App() {
     textAlign: 'center',
     lineHeight: theme.lineHeights.relaxed,
     maxWidth: '400px',
-  };
-
-  const statusBarStyle: React.CSSProperties = {
-    position: 'fixed',
-    top: theme.spacing.md,
-    left: theme.spacing.md,
-    padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
-    borderRadius: theme.borderRadius.full,
-    fontSize: theme.fontSizes.sm,
-    fontWeight: theme.fontWeights.medium,
-    zIndex: theme.zIndex.fixed,
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-    backgroundColor: serverStatus === 'online' ? theme.colors.success : 
-                   serverStatus === 'offline' ? theme.colors.error : theme.colors.warning,
-    color: theme.colors.white,
-    boxShadow: theme.shadows.md,
   };
 
   const logoutButtonStyle: React.CSSProperties = {

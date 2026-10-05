@@ -336,18 +336,6 @@ const ChatRoomList: React.FC<ChatRoomListProps> = ({
     gap: theme.spacing.md,
   };
 
-  const selectStyle: React.CSSProperties = {
-    width: '100%',
-    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-    fontSize: theme.fontSizes.md,
-    fontFamily: theme.fonts.primary,
-    backgroundColor: theme.colors.white,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: theme.borderRadius.md,
-    outline: 'none',
-    transition: theme.transitions.normal,
-  };
-
   return (
     <div style={sidebarStyle}>
       {/* Header */}

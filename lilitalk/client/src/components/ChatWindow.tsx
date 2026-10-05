@@ -19,7 +19,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const typingTimeoutRef = useRef<number>();
 
   // WebSocket 연결
   const {
@@ -138,33 +137,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       console.error('📤 메시지 전송 에러:', error);
       onError('메시지 전송에 실패했습니다. 다시 시도해주세요.');
     }
-  };
-
-  // 타이핑 인디케이터
-  const handleTyping = () => {
-    if (!isConnected) return;
-
-    const wsMessage: WebSocketMessage = {
-      type: 'TYPING_INDICATOR',
-      chatRoomId: chatRoom.id,
-      isTyping: true,
-    };
-
-    sendWebSocketMessage(wsMessage);
-
-    // 3초 후 타이핑 중단
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-    
-    typingTimeoutRef.current = setTimeout(() => {
-      const stopTypingMessage: WebSocketMessage = {
-        type: 'TYPING_INDICATOR',
-        chatRoomId: chatRoom.id,
-        isTyping: false,
-      };
-      sendWebSocketMessage(stopTypingMessage);
-    }, 3000);
   };
 
   // 채팅방 변경 시 메시지 로드

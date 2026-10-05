@@ -4,7 +4,7 @@ import { userApi } from '../services/api.ts';
 import { theme } from '../styles/theme.ts';
 import Button from './ui/Button.tsx';
 import Input from './ui/Input.tsx';
-import { MessageCircle, UserPlus, LogIn, Mail, Lock, User as UserIcon } from 'lucide-react';
+import { MessageCircle, UserPlus, LogIn, Lock, User as UserIcon } from 'lucide-react';
 
 interface LoginFormProps {
   onLogin: (user: User) => void;
