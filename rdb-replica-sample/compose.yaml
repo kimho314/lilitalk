@@ -1,0 +1,57 @@
+services:
+  postgres-primary:
+    image: postgres:18
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev_user -d library"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    environment:
+      POSTGRES_USER: dev_user
+      POSTGRES_PASSWORD: dev_password
+      POSTGRES_DB: library
+      PGDATA: /var/lib/postgresql/data
+    ports:
+      - "15432:5432"
+    volumes:
+      - ./data/postgres-primary:/var/lib/postgresql/data
+      - ./init-scripts-primary:/docker-entrypoint-initdb.d
+    command: >
+      postgres
+      -c wal_level=replica
+      -c max_wal_senders=10
+      -c max_replication_slots=10
+      -c wal_keep_size=512MB
+      -c hot_standby=on
+
+  postgres-replica:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: replicator_password   # used by pg_basebackup
+      PGDATA: /var/lib/postgresql/data
+    ports:
+      - "15433:5432"
+    volumes:
+      - ./data/postgres-replica:/var/lib/postgresql/data
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    entrypoint:
+      - bash
+      - -c
+      - |
+        set -e
+        PGDATA=/var/lib/postgresql/data
+        if [ ! -s "$$PGDATA/PG_VERSION" ]; then
+          echo "Empty data dir -> taking base backup from primary"
+          mkdir -p "$$PGDATA"
+          chown postgres:postgres "$$PGDATA"
+          chmod 700 "$$PGDATA"
+          gosu postgres pg_basebackup \
+            -h postgres-primary -U replicator \
+            -D "$$PGDATA" -R -X stream -P
+        fi
+        exec gosu postgres postgres -c hot_standby=on
