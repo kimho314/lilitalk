@@ -26,9 +26,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -66,7 +63,6 @@ public class ChatServiceImpl implements ChatService {
         this.webSocketSessionManager = webSocketSessionManager;
     }
 
-    @Cacheable(value = {"chatRooms"}, key = "#chatRoom.id")
     public ChatRoomDto chatRoomToDto(ChatRoom chatRoom) {
         var memberCount = chatRoomMemberRepository.countActiveMembersInRoom(chatRoom.getId())
             .intValue();
@@ -116,7 +112,6 @@ public class ChatServiceImpl implements ChatService {
         );
     }
 
-    @Cacheable(value = {"users"}, key = "#user.id")
     public UserDto.UserDataDto userToDto(User user) {
         return new UserDto.UserDataDto(
             user.getId(),
@@ -130,7 +125,6 @@ public class ChatServiceImpl implements ChatService {
         );
     }
 
-    @CacheEvict(value = {"chatRooms"}, allEntries = true)
     @Transactional
     @Override
     public ChatRoomDto createChatRoom(CreateChatRoomRequest request, Long createdBy) {
@@ -163,7 +157,6 @@ public class ChatServiceImpl implements ChatService {
         return chatRoomToDto(savedRoom);
     }
 
-    @Cacheable(value = {"chatRooms"}, key = "#roomId")
     @Transactional(readOnly = true)
     @Override
     public ChatRoomDto getChatRoom(Long roomId) {
@@ -202,10 +195,6 @@ public class ChatServiceImpl implements ChatService {
             .toList();
     }
 
-    @Caching(evict = {
-        @CacheEvict(value = {"chatRoomMembers"}, key = "#roomId"),
-        @CacheEvict(value = {"chatRooms"}, key = "#roomId")
-    })
     @Transactional
     @Override
     public void joinChatRoom(Long roomId, Long userId) {
@@ -234,17 +223,12 @@ public class ChatServiceImpl implements ChatService {
         }
     }
 
-    @Caching(evict = {
-        @CacheEvict(value = {"chatRoomMembers"}, key = "#roomId"),
-        @CacheEvict(value = {"chatRooms"}, key = "#roomId")
-    })
     @Transactional
     @Override
     public void leaveChatRoom(Long roomId, Long userId) {
         chatRoomMemberRepository.leaveChatRoom(roomId, userId);
     }
 
-    @Cacheable(value = {"chatRoomMembers"}, key = "#roomId")
     @Transactional(readOnly = true)
     @Override
     public List<ChatRoomMemberDto> getChatRoomMembers(Long roomId) {
