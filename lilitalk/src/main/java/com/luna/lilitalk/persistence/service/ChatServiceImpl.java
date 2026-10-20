@@ -219,6 +219,7 @@ public class ChatServiceImpl implements ChatService {
         chatRoomMemberRepository.save(member);
 
         if (webSocketSessionManager.isUserOnlineLocally(userId)) {
+            log.info("User {} is online locally, joining room {}", userId, roomId);
             webSocketSessionManager.joinRoom(userId, roomId);
         }
     }

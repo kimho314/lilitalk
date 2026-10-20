@@ -41,16 +41,17 @@ public class ChatWebSocketHandler implements WebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         var userId = getUserIdFromSession(session);
+        if (userId == null) {
+            log.warn("userId is null");
+            return;
+        }
+        sessionManager.addSession(userId, session);
+        log.info("Session {} established for {}", userId, userId);
 
-        if (userId != null) {
-            sessionManager.addSession(userId, session);
-            log.info("Session $userId established for $userId");
-
-            try {
-                loadUserChatRooms(userId);
-            } catch (Exception e) {
-                log.error("Error while loading user chat rooms", e);
-            }
+        try {
+            loadUserChatRooms(userId);
+        } catch (Exception e) {
+            log.error("Error while loading user chat rooms", e);
         }
     }
 
@@ -108,7 +109,11 @@ public class ChatWebSocketHandler implements WebSocketHandler {
 
     private @Nullable Long getUserIdFromSession(WebSocketSession session) {
         Object userId = session.getAttributes().get("userId");
-        return userId instanceof Long id ? id : null;
+        try {
+            return Long.parseLong(userId.toString());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private void loadUserChatRooms(Long userId) {
@@ -119,10 +124,10 @@ public class ChatWebSocketHandler implements WebSocketHandler {
                 sessionManager.joinRoom(userId, room.id())
             );
 
-            log.info("Loaded ${chatRooms.content.size} chat rooms for user: $userId");
+            log.info("Loaded {} chat rooms for user: {}", chatRooms.getContent().size(), userId);
 
         } catch (Exception e) {
-            log.error("Failed to load chat rooms for user: $userId", e);
+            log.error("Failed to load chat rooms for user: {}", userId, e);
         }
     }
 

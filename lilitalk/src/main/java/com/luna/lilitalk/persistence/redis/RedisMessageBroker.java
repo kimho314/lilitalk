@@ -89,12 +89,12 @@ public class RedisMessageBroker implements MessageListener {
 
             if (distributedMessage.excludeSeverId != null
                 && distributedMessage.excludeSeverId.equals(serverId)) {
-                log.error("excludeSeverId to $serverId");
+                log.error("excludeSeverId to {}", serverId);
                 return;
             }
 
             if (processedMessages.containsKey(distributedMessage.id)) {
-                log.error("processedMessages $distributedMessage");
+                log.error("processedMessages {}", distributedMessage);
                 return;
             }
 
@@ -122,9 +122,9 @@ public class RedisMessageBroker implements MessageListener {
         if (subscribeRooms.add(roomId)) {
             ChannelTopic topic = new ChannelTopic("chat.room.%d".formatted(roomId));
             messageListenerContainer.addMessageListener(this, topic);
-            log.info("Subscribed to $roomId");
+            log.info("Subscribed to {}", roomId);
         } else {
-            log.error("Room $roomId does not exist");
+            log.error("Room {} does not exist", roomId);
         }
     }
 
@@ -132,9 +132,9 @@ public class RedisMessageBroker implements MessageListener {
         if (subscribeRooms.remove(roomId)) {
             ChannelTopic topic = new ChannelTopic("chat.room.%d".formatted(roomId));
             messageListenerContainer.removeMessageListener(this, topic);
-            log.info("Unsubscribed from $roomId");
+            log.info("Unsubscribed from {}", roomId);
         } else {
-            log.error("Room $roomId does not exist");
+            log.error("Room {} does not exist", roomId);
         }
     }
 
@@ -152,9 +152,9 @@ public class RedisMessageBroker implements MessageListener {
             String json = objectMapper.writeValueAsString(dMessage);
             redisTemplate.convertAndSend("chat.room.%d".formatted(roomId), json);
 
-            log.info("Broadcast to $roomId to $json");
+            log.info("Broadcast to {} to {}", roomId, json);
         } catch (Exception e) {
-            log.error("Error broadcast to $roomId", e);
+            log.error("Error broadcast to {}", roomId, e);
         }
     }
 

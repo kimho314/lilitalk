@@ -25,13 +25,14 @@ public class WebSocketHandshakeInterceptor implements HandshakeInterceptor {
         Map<String, Object> attributes
     ) throws Exception {
         try {
-            // ws://localhost:8080/chat?userId=123
+            // ws://localhost:8080/api/ws/chat?userId=123
             var uri = request.getURI();
             var query = uri.getQuery();
 
             if (query != null) {
                 var param = parseQuery(query);
                 if (param.get("userId") == null) {
+                    log.warn("userId is null");
                     return false;
                 } else {
                     attributes.put("userId", param.get("userId"));

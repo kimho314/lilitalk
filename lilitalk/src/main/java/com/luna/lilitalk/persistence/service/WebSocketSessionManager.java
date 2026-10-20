@@ -50,7 +50,7 @@ public class WebSocketSessionManager {
     }
 
     public void addSession(Long userId, WebSocketSession session) {
-        log.info("Adding session $userId to server");
+        log.info("Adding session {} to server", userId);
         userSession.computeIfAbsent(userId, k -> new HashSet<>()).add(session);
     }
 
@@ -103,7 +103,8 @@ public class WebSocketSessionManager {
 
         redisTemplate.opsForSet().add(serverRoomKey, roomId.toString());
 
-        log.info("Joined $roomId for $userId $serverId to server $serverRoomKey");
+        log.info(
+            "Joined %d for %d %s to server %s".formatted(roomId, userId, serverId, serverRoomKey));
     }
 
     public void sendMessageToLocalRoom(
