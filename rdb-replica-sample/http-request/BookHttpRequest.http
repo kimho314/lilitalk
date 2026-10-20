@@ -1,0 +1,14 @@
+###
+POST http://localhost:8080/api/books/
+Content-Type: application/json
+
+{
+  "title": "Modern Concurrency in Java",
+  "isbn": "978-1098165413"
+}
+
+###
+GET http://localhost:8080/api/books/1
+Accept: application/json
+
+###

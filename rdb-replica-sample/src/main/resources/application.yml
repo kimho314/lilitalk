@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: preview-multi-datasource
+  data:
+    jdbc:
+      repositories:
+        enabled: true
+  datasource:
+    source:
+      hikari:
+        jdbc-url: jdbc:postgresql://127.0.0.1:15432/library
+        username: dev_user
+        password: dev_password
+        driver-class-name: org.postgresql.Driver
+        pool-name: SourceConnectionPool
+        minimum-idle: 10
+        maximum-pool-size: 20
+        idle-timeout: 60000
+        connection-timeout: 30000
+    replica:
+      hikari:
+        jdbc-url: jdbc:postgresql://127.0.0.1:15433/library
+        username: dev_user
+        password: dev_password
+        driver-class-name: org.postgresql.Driver
+        pool-name: ReplicaConnectionPool
+        minimum-idle: 10
+        maximum-pool-size: 20
+        idle-timeout: 60000
+        connection-timeout: 30000
+  sql:
+    init:
+      mode: always
+logging:
+  level:
+    org.springframework.jdbc.core: TRACE
