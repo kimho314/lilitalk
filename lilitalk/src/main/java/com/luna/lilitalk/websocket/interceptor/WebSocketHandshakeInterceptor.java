@@ -1,5 +1,7 @@
 package com.luna.lilitalk.websocket.interceptor;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -8,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
+import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
@@ -25,24 +28,29 @@ public class WebSocketHandshakeInterceptor implements HandshakeInterceptor {
         Map<String, Object> attributes
     ) throws Exception {
         try {
-            // ws://localhost:8080/api/ws/chat?userId=123
-            var uri = request.getURI();
-            var query = uri.getQuery();
+            String userId = null;
+            if (request instanceof ServletServerHttpRequest servletRequest) {
+                userId = servletRequest.getServletRequest().getParameter("userId");
+            }
 
-            if (query != null) {
-                var param = parseQuery(query);
-                if (param.get("userId") == null) {
-                    log.warn("userId is null");
-                    return false;
-                } else {
-                    attributes.put("userId", param.get("userId"));
-                    return true;
+            if (userId == null) {
+                var uri = request.getURI();
+                var query = uri.getQuery();
+                if (query != null) {
+                    var param = parseQuery(query);
+                    userId = param.get("userId");
                 }
-            } else {
+            }
+
+            if (userId == null || userId.isBlank()) {
+                log.warn("userId is missing or empty in WebSocket handshake: {}", request.getURI());
                 return false;
             }
+
+            attributes.put("userId", userId.trim());
+            return true;
         } catch (Exception e) {
-            log.error(e.getMessage(), e);
+            log.error("WebSocket HandshakeInterceptor exception", e);
             return false;
         }
     }
@@ -57,7 +65,8 @@ public class WebSocketHandshakeInterceptor implements HandshakeInterceptor {
         if (exception != null) {
             log.error("WebSocket HandshakeInterceptor exception", exception);
         } else {
-            log.info("WebSocket HandshakeInterceptor");
+            log.info("WebSocket HandshakeInterceptor completed successfully for URI: {}",
+                request.getURI());
         }
     }
 
@@ -66,8 +75,8 @@ public class WebSocketHandshakeInterceptor implements HandshakeInterceptor {
             .map(param -> param.split("=", 2))
             .filter(parts -> parts.length == 2)
             .collect(Collectors.toMap(
-                parts -> parts[0],
-                parts -> parts[1],
+                parts -> URLDecoder.decode(parts[0], StandardCharsets.UTF_8),
+                parts -> URLDecoder.decode(parts[1], StandardCharsets.UTF_8),
                 (existing, replacement) -> existing
             ));
     }

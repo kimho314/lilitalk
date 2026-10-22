@@ -82,7 +82,7 @@ public class ChatWebSocketHandler implements WebSocketHandler {
 
         // EOFException -> 클라이언트 연결 해제, 정상적인 상황 (로그레벨을 따로 두기 위해)
         if (exception instanceof EOFException) {
-            log.debug("WebSocket connection closed by client for user: {}", userId);
+            log.info("WebSocket connection closed by client for user: {}", userId);
         } else {
             log.error("WebSocket transport error for user: {}", userId, exception);
         }

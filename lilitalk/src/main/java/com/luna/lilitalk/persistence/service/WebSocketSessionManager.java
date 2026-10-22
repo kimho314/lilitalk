@@ -4,6 +4,7 @@ import com.luna.lilitalk.domain.dto.WebSocketDto.ChatMessage;
 import com.luna.lilitalk.persistence.redis.RedisMessageBroker;
 import com.luna.lilitalk.persistence.repository.ChatRoomMemberRepository;
 import jakarta.annotation.PostConstruct;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -55,38 +56,46 @@ public class WebSocketSessionManager {
     }
 
     public void removeSession(Long userId, WebSocketSession session) {
-        Set<WebSocketSession> webSocketSessions = userSession.get(userId);
-        if (!webSocketSessions.isEmpty()) {
-            webSocketSessions.remove(session);
+        Set<WebSocketSession> sessions = userSession.get(userId);
+        if (sessions != null) {
+            sessions.remove(session);
         }
-        if (userSession.get(userId).isEmpty()) {
+
+        Set<WebSocketSession> remaining = userSession.get(userId);
+        if (remaining != null && remaining.isEmpty()) {
             userSession.remove(userId);
 
-            long totalConnectedUsers = userSession.values().stream()
-                .flatMap(s -> s.stream()
+            int totalConnectedUsers = userSession.values().stream()
+                .mapToInt(userSessions -> (int) userSessions.stream()
                     .filter(WebSocketSession::isOpen)
-                ).count();
+                    .count())
+                .sum();
 
             if (totalConnectedUsers == 0) {
                 String serverId = redisMessageBroker.getServerId();
-                String serverRoomKey = "%s%s".formatted(serverRoomsKeyPrefix, serverId);
+                String serverRoomKey = serverRoomsKeyPrefix + serverId;
 
-                Set<String> subscribedRooms = redisTemplate.opsForSet().members(serverRoomKey);
-                if (subscribedRooms == null) {
-                    subscribedRooms = new HashSet<>();
+                Set<String> members = redisTemplate.opsForSet().members(serverRoomKey);
+                Set<String> subscribedRooms = (members != null) ? members : Collections.emptySet();
+
+                for (String roomIdStr : subscribedRooms) {
+                    Long roomId = toLongOrNull(roomIdStr);
+                    if (roomId != null) {
+                        redisMessageBroker.unsubscribeFromRoom(roomId);
+                    }
                 }
 
-                subscribedRooms.forEach(roomIdStr -> {
-                    try {
-                        Long roomId = Long.parseLong(roomIdStr);
-                        redisTemplate.opsForSet().remove(serverRoomKey, roomId);
-                    } catch (NumberFormatException e) {
-                        log.error("Failed to parse roomId: {}", roomIdStr, e);
-                    }
-                });
                 redisTemplate.delete(serverRoomKey);
                 log.info("Removed {} {}", totalConnectedUsers, subscribedRooms);
             }
+        }
+    }
+
+    private static Long toLongOrNull(String value) {
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException e) {
+            return null;
         }
     }
 
@@ -95,13 +104,13 @@ public class WebSocketSessionManager {
         String serverRoomKey = "%s%s".formatted(serverRoomsKeyPrefix, serverId);
 
         boolean wasAlreadySubscribed =
-            redisTemplate.opsForSet().isMember(serverRoomKey, roomId.toString()) == true;
+            redisTemplate.opsForSet().isMember(serverRoomKey, String.valueOf(roomId)) == true;
 
         if (!wasAlreadySubscribed) {
             redisMessageBroker.subscribeToRoom(roomId);
         }
 
-        redisTemplate.opsForSet().add(serverRoomKey, roomId.toString());
+        redisTemplate.opsForSet().add(serverRoomKey, String.valueOf(roomId));
 
         log.info(
             "Joined %d for %d %s to server %s".formatted(roomId, userId, serverId, serverRoomKey));
