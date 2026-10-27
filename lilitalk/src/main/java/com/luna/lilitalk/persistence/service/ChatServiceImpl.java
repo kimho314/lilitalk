@@ -240,6 +240,7 @@ public class ChatServiceImpl implements ChatService {
             .toList();
     }
 
+    @Transactional
     @Override
     public MessageDto sendMessage(SendMessageRequest request, Long senderId) {
         var chatRoom = chatRoomRepository.findById(request.chatRoomId())
@@ -310,6 +311,7 @@ public class ChatServiceImpl implements ChatService {
             ));
     }
 
+    @Transactional(readOnly = true)
     @Override
     public MessagePageResponse getMessagesByCursor(MessagePageRequest request, Long userId) {
         if (!chatRoomMemberRepository.existsByChatRoomIdAndUserIdAndIsActiveTrue(
