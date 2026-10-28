@@ -29,11 +29,11 @@ docker network ls | grep chat-network || docker network create chat-network
 
 # 단계별 서비스 시작
 echo "📊 데이터베이스 및 Redis 시작 중..."
-docker-compose up -d postgres redis
+docker-compose up -d postgres-primary postgres-replica redis
 
 # 헬스체크 대기
-echo "⏳ 데이터베이스 준비 대기 중..."
-while ! docker-compose exec postgres pg_isready -U chatuser -d chatdb; do
+echo "⏳ 주 데이터베이스 준비 대기 중..."
+while ! docker-compose exec postgres-primary pg_isready -U chatuser -d chatdb; do
     sleep 2
 done
 
