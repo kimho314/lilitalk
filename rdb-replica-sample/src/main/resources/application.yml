@@ -1,10 +1,15 @@
 spring:
   application:
-    name: preview-multi-datasource
+    name: preview-multi-datasource-cache
   data:
     jdbc:
       repositories:
         enabled: true
+    redis:
+      host: 127.0.0.1
+      port: 16379
+      repositories:
+        enabled: false
   datasource:
     source:
       hikari:

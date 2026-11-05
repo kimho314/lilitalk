@@ -8,7 +8,14 @@ Content-Type: application/json
 }
 
 ###
-GET http://localhost:8080/api/books/1
+GET http://localhost:8080/api/books/2
 Accept: application/json
 
 ###
+PUT http://localhost:8080/api/books/
+Content-Type: application/json
+
+{
+  "id": 2,
+  "title": "Modern Concurrency in Java 2nd"
+}

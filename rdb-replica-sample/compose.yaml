@@ -56,3 +56,19 @@ services:
             -D "$$PGDATA" -R -X stream -P
         fi
         exec gosu postgres postgres -c hot_standby=on
+
+  redis:
+    image: redis:8.10
+    restart: unless-stopped
+    ports:
+      - "16379:6379"
+    volumes:
+      - ./data/redis:/data
+
+  redis-insight:
+    image: redis/redisinsight:3.8
+    restart: unless-stopped
+    ports:
+      - "15540:5540"
+    volumes:
+      - ./data/redis-insight:/data
