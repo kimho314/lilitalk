@@ -3,7 +3,7 @@ POST http://localhost:8080/api/books/
 Content-Type: application/json
 
 {
-  "title": "Modern Concurrency in Java",
+  "title": "Modern Concurrency in Java 5th",
   "isbn": "978-1098165413"
 }
 
@@ -17,5 +17,5 @@ Content-Type: application/json
 
 {
   "id": 2,
-  "title": "Modern Concurrency in Java 2nd"
+  "title": "Modern Concurrency in Python"
 }
