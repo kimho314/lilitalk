@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -158,7 +157,6 @@ public class ChatServiceImpl implements ChatService {
         return chatRoomToDto(savedRoom);
     }
 
-    @Cacheable(value = "chatRooms", key = "#roomId", unless = "#result == null")
     @Transactional(readOnly = true)
     @Override
     public ChatRoomDto getChatRoom(Long roomId) {
