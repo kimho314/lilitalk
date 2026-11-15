@@ -1,0 +1,11 @@
+GET http://localhost:8080/api/users/1
+Content-Type: "application/json"
+
+###
+
+GET http://localhost:8080/api/users/search?username=kim&page=0&size=30
+Content-Type: application/json
+
+
+###
+

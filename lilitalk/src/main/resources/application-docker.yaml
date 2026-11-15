@@ -5,7 +5,7 @@ spring:
   datasource:
     source:
       hikari:
-        jdbc-url: jdbc:postgresql://${DB_HOST:postgres-primary}:${DB_PORT:5432}/${DB_NAME:chatdb}
+        jdbc-url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:15432}/${DB_NAME:chatdb}
         username: ${DB_USERNAME:chatuser}
         password: ${DB_PASSWORD:chatpass}
         driver-class-name: org.postgresql.Driver
@@ -19,7 +19,7 @@ spring:
         auto-commit: false
     replica:
       hikari:
-        jdbc-url: jdbc:postgresql://${DB_HOST:postgres-replica}:${DB_PORT:5432}/${DB_NAME:chatdb}
+        jdbc-url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:15433}/${DB_NAME:chatdb}
         username: ${DB_USERNAME:chatuser}
         password: ${DB_PASSWORD:chatpass}
         driver-class-name: org.postgresql.Driver
@@ -36,7 +36,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
-    show-sql: false
+    show-sql: true
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -57,7 +57,7 @@ spring:
     redis:
       repositories:
         enabled: false
-      host: ${REDIS_HOST:redis}
+      host: ${REDIS_HOST:127.0.0.1}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
       timeout: 2s

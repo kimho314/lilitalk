@@ -1,5 +1,6 @@
 package com.luna.lilitalk.persistence.service;
 
+import com.luna.lilitalk.core.json.JsonUtil;
 import com.luna.lilitalk.domain.dto.UserDto;
 import com.luna.lilitalk.domain.dto.UserDto.CreateUserRequest;
 import com.luna.lilitalk.domain.dto.UserDto.LoginRequest;
@@ -11,7 +12,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,9 +30,17 @@ public class UserServiceImpl implements UserService {
 
     private static final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
     private final UserRepository userRepository;
+    private final CacheService cacheService;
+    private final JsonUtil jsonUtil;
 
-    public UserServiceImpl(UserRepository userRepository) {
+    public UserServiceImpl(
+        UserRepository userRepository,
+        CacheService cacheService,
+        JsonUtil jsonUtil
+    ) {
         this.userRepository = userRepository;
+        this.cacheService = cacheService;
+        this.jsonUtil = jsonUtil;
     }
 
     private UserDto.UserDataDto userToDto(User user) {
@@ -91,15 +102,42 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     @Override
     public UserDto.UserDataDto getUserById(Long userId) {
+        String key = cacheService.buildKey("users", userId.toString());
+        Optional<String> maybeUser = cacheService.get(key);
+        if (maybeUser.isPresent()) {
+            return jsonUtil.fromJson(maybeUser.get(), User.class)
+                .map(this::userToDto)
+                .orElseThrow(
+                    () -> new IllegalArgumentException("사용자를 찾을 수 없습니다: %s".formatted(userId)));
+        }
+
         var user = userRepository.findById(userId)
-            .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: $userId"));
+            .orElseThrow(
+                () -> new IllegalArgumentException("사용자를 찾을 수 없습니다: %s".formatted(userId)));
+        jsonUtil.toJson(user)
+            .ifPresent(it -> cacheService.set(key, it, 1800L));
+
         return userToDto(user);
     }
 
     @Transactional(readOnly = true)
     @Override
     public Page<UserDto.UserDataDto> searchUsers(String query, Pageable pageable) {
+        String key = cacheService.buildKey("users", query, pageable.toString());
+        Optional<String> maybeUsers = cacheService.get(key);
+        if (maybeUsers.isPresent()) {
+            List<User> users = jsonUtil.fromJsonToList(maybeUsers.get(), User.class);
+            return users.stream()
+                .map(this::userToDto)
+                .collect(Collectors.collectingAndThen(
+                    Collectors.toList(),
+                    list -> new PageImpl<>(list, pageable, users.size())
+                ));
+        }
+
         Page<User> users = userRepository.searchUsers(query, pageable);
+        jsonUtil.toJson(users.getContent())
+            .ifPresent(it -> cacheService.set(key, it, 1800L));
 
         return users.getContent().stream()
             .map(this::userToDto)
@@ -112,6 +150,12 @@ public class UserServiceImpl implements UserService {
     @Transactional
     @Override
     public UserDto.UserDataDto updateLastSeen(Long userId) {
+        String key = cacheService.buildKey("users", ":*");
+        boolean isDeleted = cacheService.delete(key);
+        if (!isDeleted) {
+            log.info("Failed to delete cache for user: {}", userId);
+        }
+
         var user = userRepository.findById(userId)
             .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: $userId"));
 
