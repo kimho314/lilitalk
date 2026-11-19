@@ -1,5 +1,6 @@
 package com.luna.lilitalk.persistence.service;
 
+import com.luna.lilitalk.core.json.JsonUtil;
 import com.luna.lilitalk.domain.dto.ChatDto;
 import com.luna.lilitalk.domain.dto.ChatDto.ChatRoomDto;
 import com.luna.lilitalk.domain.dto.ChatDto.ChatRoomMemberDto;
@@ -23,6 +24,7 @@ import com.luna.lilitalk.persistence.repository.ChatRoomRepository;
 import com.luna.lilitalk.persistence.repository.MessageRepository;
 import com.luna.lilitalk.persistence.repository.UserRepository;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +46,8 @@ public class ChatServiceImpl implements ChatService {
     private final RedisMessageBroker redisMessageBroker;
     private final MessageSequenceService messageSequenceService;
     private final WebSocketSessionManager webSocketSessionManager;
+    private final CacheService cacheService;
+    private final JsonUtil jsonUtil;
 
     public ChatServiceImpl(
         ChatRoomRepository chatRoomRepository,
@@ -52,7 +56,9 @@ public class ChatServiceImpl implements ChatService {
         UserRepository userRepository,
         RedisMessageBroker redisMessageBroker,
         MessageSequenceService messageSequenceService,
-        WebSocketSessionManager webSocketSessionManager
+        WebSocketSessionManager webSocketSessionManager,
+        CacheService cacheService,
+        JsonUtil jsonUtil
     ) {
         this.chatRoomRepository = chatRoomRepository;
         this.messageRepository = messageRepository;
@@ -61,6 +67,8 @@ public class ChatServiceImpl implements ChatService {
         this.redisMessageBroker = redisMessageBroker;
         this.messageSequenceService = messageSequenceService;
         this.webSocketSessionManager = webSocketSessionManager;
+        this.cacheService = cacheService;
+        this.jsonUtil = jsonUtil;
     }
 
     public ChatRoomDto chatRoomToDto(ChatRoom chatRoom) {
@@ -150,9 +158,10 @@ public class ChatServiceImpl implements ChatService {
         chatRoomMemberRepository.save(ownerMember);
 
         // 생성자 세션 갱신
-        if (webSocketSessionManager.isUserOnlineLocally(creator.getId())) {
-            webSocketSessionManager.joinRoom(creator.getId(), savedRoom.getId());
+        if (!webSocketSessionManager.isUserOnlineLocally(creator.getId())) {
+            log.info("User {} is not online locally", creator.getId());
         }
+        webSocketSessionManager.joinRoom(creator.getId(), savedRoom.getId());
 
         return chatRoomToDto(savedRoom);
     }
@@ -160,15 +169,41 @@ public class ChatServiceImpl implements ChatService {
     @Transactional(readOnly = true)
     @Override
     public ChatRoomDto getChatRoom(Long roomId) {
+        String key = cacheService.buildKey("rooms", roomId.toString());
+        Optional<String> maybeRoom = cacheService.get(key);
+        if (maybeRoom.isPresent()) {
+            String chatRoom = maybeRoom.get();
+            ChatRoom chatRoom1 = jsonUtil.fromJson(chatRoom, ChatRoom.class)
+                .orElseThrow(
+                    () -> new IllegalArgumentException("채팅방을 찾을 수 없습니다: $%s".formatted(roomId)));
+            return chatRoomToDto(chatRoom1);
+        }
+
         var chatRoom = chatRoomRepository.findById(roomId)
             .orElseThrow(() -> new IllegalArgumentException("채팅방을 찾을 수 없습니다: $roomId"));
+        jsonUtil.toJson(chatRoom).ifPresent(it -> cacheService.set(key, it, 3600L));
+
         return chatRoomToDto(chatRoom);
     }
 
     @Transactional(readOnly = true)
     @Override
     public Page<ChatRoomDto> getChatRooms(Long userId, Pageable pageable) {
+        String key = cacheService.buildKey("rooms", userId.toString());
+        Optional<String> maybeRooms = cacheService.get(key);
+        if (maybeRooms.isPresent()) {
+            List<ChatRoom> chatRooms = jsonUtil.fromJsonToList(maybeRooms.get(), ChatRoom.class);
+            return chatRooms.stream()
+                .map(this::chatRoomToDto)
+                .collect(Collectors.collectingAndThen(
+                    Collectors.toList(),
+                    list -> new PageImpl<>(list, pageable, chatRooms.size())
+                ));
+        }
+
         Page<ChatRoom> chatRooms = chatRoomRepository.findUserChatRooms(userId, pageable);
+        jsonUtil.toJson(chatRooms.getContent())
+            .ifPresent(it -> cacheService.set(key, it, 3600L));
 
         return chatRooms.stream()
             .map(this::chatRoomToDto)
@@ -181,6 +216,15 @@ public class ChatServiceImpl implements ChatService {
     @Transactional(readOnly = true)
     @Override
     public List<ChatRoomDto> searchChatRooms(String query, Long userId) {
+        String key = cacheService.buildKey("rooms", userId.toString() + "-" + query);
+        Optional<String> maybeRooms = cacheService.get(key);
+        if (maybeRooms.isPresent()) {
+            return jsonUtil.fromJsonToList(maybeRooms.get(), ChatRoom.class)
+                .stream()
+                .map(this::chatRoomToDto)
+                .toList();
+        }
+
         List<ChatRoom> chatRooms;
         if (query.isBlank()) {
             chatRooms = chatRoomRepository.findByIsActiveTrueOrderByCreatedAtDesc();
@@ -189,9 +233,11 @@ public class ChatServiceImpl implements ChatService {
                 query
             );
         }
+        jsonUtil.toJson(chatRooms)
+            .ifPresent(it -> cacheService.set(key, it, 3600L));
 
         return chatRooms.stream()
-            .map(it -> chatRoomToDto(it))
+            .map(this::chatRoomToDto)
             .toList();
     }
 
@@ -200,16 +246,21 @@ public class ChatServiceImpl implements ChatService {
     public void joinChatRoom(Long roomId, Long userId) {
         // 채팅방 확인
         var chatRoom = chatRoomRepository.findById(roomId)
-            .orElseThrow(() -> new IllegalArgumentException("채팅방을 찾을 수 없습니다: $roomId"));
+            .orElseThrow(
+                () -> new IllegalArgumentException("채팅방을 찾을 수 없습니다: %d".formatted(roomId)));
 
         // 사용자 확인
         var user = userRepository.findById(userId)
-            .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: $userId"));
+            .orElseThrow(
+                () -> new IllegalArgumentException("사용자를 찾을 수 없습니다: %d".formatted(userId)));
 
         // 이미 참여중인지 확인
         if (chatRoomMemberRepository.existsByChatRoomIdAndUserIdAndIsActiveTrue(roomId, userId)) {
             throw new IllegalStateException("이미 참여한 채팅방입니다");
         }
+
+        String key = cacheService.buildKey("rooms", userId + ":*");
+        cacheService.delete(key);
 
         var member = new ChatRoomMember(
             chatRoom,
@@ -229,6 +280,8 @@ public class ChatServiceImpl implements ChatService {
     @Transactional
     @Override
     public void leaveChatRoom(Long roomId, Long userId) {
+        String key = cacheService.buildKey("rooms", userId + ":*");
+        cacheService.delete(key);
         chatRoomMemberRepository.leaveChatRoom(roomId, userId);
     }
 
@@ -236,7 +289,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public List<ChatRoomMemberDto> getChatRoomMembers(Long roomId) {
         return chatRoomMemberRepository.findByChatRoomIdAndIsActiveTrue(roomId).stream()
-            .map(it -> memberToDto(it))
+            .map(this::memberToDto)
             .toList();
     }
 
@@ -252,7 +305,8 @@ public class ChatServiceImpl implements ChatService {
                 () -> new IllegalArgumentException("사용자를 찾을 수 없습니다: %d".formatted(senderId))
             );
 
-        chatRoomMemberRepository.findByChatRoomIdAndUserIdAndIsActiveTrue(request.chatRoomId(),
+        chatRoomMemberRepository.findByChatRoomIdAndUserIdAndIsActiveTrue(
+                request.chatRoomId(),
                 senderId)
             .orElseThrow(() -> new IllegalArgumentException("채팅방에 참여하지 않은 사용자입니다."));
 
@@ -289,7 +343,7 @@ public class ChatServiceImpl implements ChatService {
                 redisMessageBroker.getServerId()
             );
         } catch (Exception e) {
-            log.error("Failed to broadcast message via Redis: %s".formatted(e.getMessage()), e);
+            log.error("Failed to broadcast message via Redis: {}", e.getMessage(), e);
         }
 
         return messageToDto(savedMessage);
@@ -304,7 +358,7 @@ public class ChatServiceImpl implements ChatService {
 
         Page<Message> messages = messageRepository.findByChatRoomId(roomId, pageable);
         return messages.stream()
-            .map(it -> messageToDto(it))
+            .map(this::messageToDto)
             .collect(Collectors.collectingAndThen(
                 Collectors.toList(),
                 list -> new PageImpl<>(list, pageable, messages.getTotalElements())

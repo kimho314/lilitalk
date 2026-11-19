@@ -41,7 +41,7 @@ public class JsonUtil {
         try {
             return Optional.of(objectMapper.writeValueAsString(object));
         } catch (Exception ex) {
-            log.error("Failed Object to JSON: {}", ex.getMessage());
+            log.error("Failed Object {} to JSON: {}", object.toString(), ex.getMessage());
             return Optional.empty();
         }
     }
