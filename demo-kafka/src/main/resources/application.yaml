@@ -1,10 +1,10 @@
 spring:
+  application:
+    name: demo-kafka
   docker:
     compose:
       file:
         - ./docker/docker-compose.yaml
-  application:
-    name: demo-kafka
   kafka:
     bootstrap-servers: localhost:19094,localhost:19095,localhost:19096
     producer:
