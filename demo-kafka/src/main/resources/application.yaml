@@ -1,4 +1,8 @@
 spring:
+  docker:
+    compose:
+      file:
+        - ./docker/docker-compose.yaml
   application:
     name: demo-kafka
   kafka:
